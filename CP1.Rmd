@@ -1,0 +1,70 @@
+---
+title: "CP1"
+author: "Jianing Ren"
+date: "09/09/2020"
+output: html_document
+---
+
+## Loading Data
+```{r,message=F}
+activity=read.csv("/Users/rjn/OneDrive/大学/coursera/reproducible research/activity.csv")
+library(tidyverse)
+```
+
+## What is mean total number of steps taken per day?
+
+```{r}
+day_total=aggregate(activity[,1],list(activity$date),sum)
+hist(day_total$x,main="Distribution of Total Daily Steps")
+mean(day_total$x,na.rm=T)
+median(day_total$x,na.rm=T)
+```
+
+As Calculated above, the mean daily steps is 10766.19 and the median is 10765. 
+
+## What is the average daily activity pattern?
+
+```{r}
+interval=activity%>%group_by(interval)%>%summarise(mean_steps=mean(steps,na.rm=T))
+plot(interval$mean_steps,type="l")
+interval[which(interval$mean_steps==max(interval$mean_steps)),]
+```
+
+Minutes 835-840 (about 2pm) has the maximum mean number of steps of about 206. 
+
+## Filling NAs
+
+```{r}
+sum(is.na(activity$steps))
+#There are 2304 total missing values here. I decide to fill those missing values with the interval means. 
+
+filled=activity
+for (i in 1:nrow(filled))
+{
+    if (is.na(filled[i,]$steps)==T)
+        filled[i,]$steps=interval[which(interval$interval==filled[i,]$interval),]$mean_steps
+}
+```
+
+
+```{r}
+day_ttl_filled=aggregate(filled$steps,list(filled$date),sum)
+
+hist(day_ttl_filled[,2])
+mean(day_ttl_filled[,2])
+median(day_ttl_filled[,2])
+```
+
+As compared to the original dataset, filling in the missing values doesn't change the histogram distribution and the centers much. 
+
+## Weekday vs. Weekend Steps
+
+```{r}
+filled$is.weekday=weekdays(as.Date(filled$date))
+filled$is.weekday=ifelse(filled$is.weekday %in% c("Saturday","Sunday"),"Weekend","Weekday")
+
+interval2=filled%>%group_by(is.weekday,interval)%>%summarise(mean_steps=mean(steps))
+
+ggplot(interval2,aes(x=interval,y=mean_steps))+geom_line()+facet_wrap(.~is.weekday)
+```
+
